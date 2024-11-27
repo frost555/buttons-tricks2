@@ -7,7 +7,7 @@ export const NotificationBar = () => {
     <div
       style={{
         top: 100 + viewport.offsetTop,
-        transition: "top 200ms ease-in-out",
+        transition: "top 100ms ease-in-out",
       }}
       className="fixed left-0 right-0 bg-yellow-500 text-white p-4 shadow-lg z-50"
     >

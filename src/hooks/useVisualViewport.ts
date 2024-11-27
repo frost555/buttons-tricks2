@@ -40,7 +40,7 @@ export const useVisualViewport = () => {
     };
 
     // Debounce the handleResize function
-    const debouncedHandleResize = debounce(handleResize, 100); // 100ms debounce time
+    const debouncedHandleResize = debounce(handleResize, 33); // 100ms debounce time
 
     visualViewport.addEventListener("resize", debouncedHandleResize);
     visualViewport.addEventListener("scroll", debouncedHandleResize);
