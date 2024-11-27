@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const ScrollContent = () => {
   return (
     <div className="pt-40 px-4 pb-8">
@@ -17,9 +15,9 @@ export const ScrollContent = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <p className="mb-4">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-              eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-              ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-              aliquip ex ea commodo consequat.
+              eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
+              enim ad minim veniam, quis nostrud exercitation ullamco laboris
+              nisi ut aliquip ex ea commodo consequat.
             </p>
             <p>
               Duis aute irure dolor in reprehenderit in voluptate velit esse
@@ -28,6 +26,11 @@ export const ScrollContent = () => {
               anim id est laborum.
             </p>
           </div>
+          <input
+            type="text"
+            placeholder="Type something..."
+            className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+          />
         </div>
       ))}
     </div>

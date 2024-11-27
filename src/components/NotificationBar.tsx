@@ -1,13 +1,19 @@
-import React from 'react';
-import { useVisualViewport } from '../hooks/useVisualViewport';
+import { useVisualViewport } from "../hooks/useVisualViewport";
 
 export const NotificationBar = () => {
   const viewport = useVisualViewport();
 
   return (
-    <div className="fixed top-[100px] left-0 right-0 bg-yellow-500 text-white p-4 shadow-lg z-50">
+    <div
+      style={{
+        top: 100 + viewport.offsetTop,
+      }}
+      className="fixed left-0 right-0 bg-yellow-500 text-white p-4 shadow-lg z-50"
+    >
       <div className="max-w-2xl mx-auto">
-        <p className="text-center font-semibold mb-2">Important Notification at Top 100px</p>
+        <p className="text-center font-semibold mb-2">
+          Important Notification at Top 100px
+        </p>
         <div className="bg-yellow-600 rounded p-2 text-sm">
           <p>Viewport Properties:</p>
           <ul className="grid grid-cols-2 gap-2">
