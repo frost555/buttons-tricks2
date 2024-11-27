@@ -1,14 +1,34 @@
+import { useEffect, useRef } from "react";
+
+const MyInput = () => {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const visualViewport = window.visualViewport;
+
+    if (!visualViewport) return;
+
+    visualViewport.addEventListener("scroll", () => {
+      ref?.current?.blur();
+    });
+  }, []);
+  return (
+    <input
+      ref={ref}
+      type="text"
+      autoComplete="off"
+      autoCapitalize="off"
+      autoCorrect="off"
+      placeholder="Type something..."
+      className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+    />
+  );
+};
+
 export const ScrollContent = () => {
   return (
     <div className="pt-40 px-4 pb-8">
-      <div className="max-w-2xl mx-auto mb-8">
-        <input
-          type="text"
-          placeholder="Type something..."
-          className="w-full p-2 rounded border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-        />
-      </div>
-
+      <div className="max-w-2xl mx-auto mb-8"></div>
+      <MyInput />
       {[...Array(20)].map((_, index) => (
         <div key={index} className="max-w-2xl mx-auto mb-8">
           <h2 className="text-2xl font-bold mb-4">Section {index + 1}</h2>
