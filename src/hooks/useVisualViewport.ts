@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { debounce } from "lodash-es";
+import { useEffect, useState } from "react";
 
 interface ViewportState {
   height: number;
@@ -23,7 +24,7 @@ export const useVisualViewport = () => {
 
   useEffect(() => {
     const visualViewport = window.visualViewport;
-    
+
     if (!visualViewport) return;
 
     const handleResize = () => {
@@ -38,15 +39,18 @@ export const useVisualViewport = () => {
       });
     };
 
-    visualViewport.addEventListener('resize', handleResize);
-    visualViewport.addEventListener('scroll', handleResize);
+    // Debounce the handleResize function
+    const debouncedHandleResize = debounce(handleResize, 100); // 100ms debounce time
+
+    visualViewport.addEventListener("resize", debouncedHandleResize);
+    visualViewport.addEventListener("scroll", debouncedHandleResize);
 
     // Initial values
     handleResize();
 
     return () => {
-      visualViewport.removeEventListener('resize', handleResize);
-      visualViewport.removeEventListener('scroll', handleResize);
+      visualViewport.removeEventListener("resize", debouncedHandleResize);
+      visualViewport.removeEventListener("scroll", debouncedHandleResize);
     };
   }, []);
 
