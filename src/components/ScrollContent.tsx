@@ -2,14 +2,49 @@ import { useEffect, useRef } from "react";
 
 const MyInput = () => {
   const ref = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     const visualViewport = window.visualViewport;
-
     if (!visualViewport) return;
 
-    visualViewport.addEventListener("scroll", () => {
-      ref?.current?.blur();
-    });
+    let initialHeight = visualViewport.height;
+    let keyboardOpenTimeout: number | null = null;
+    let isKeyboardOpen = false;
+
+    const handleResize = () => {
+      if (visualViewport.height < initialHeight) {
+        if (keyboardOpenTimeout) {
+          window.clearTimeout(keyboardOpenTimeout);
+        }
+
+        keyboardOpenTimeout = window.setTimeout(() => {
+          isKeyboardOpen = true;
+        }, 500);
+      } else {
+        isKeyboardOpen = false;
+        if (keyboardOpenTimeout) {
+          window.clearTimeout(keyboardOpenTimeout);
+        }
+        initialHeight = visualViewport.height;
+      }
+    };
+
+    const handleScroll = () => {
+      if (isKeyboardOpen) {
+        ref?.current?.blur();
+      }
+    };
+
+    visualViewport.addEventListener("resize", handleResize);
+    visualViewport.addEventListener("scroll", handleScroll);
+
+    return () => {
+      visualViewport.removeEventListener("resize", handleResize);
+      visualViewport.removeEventListener("scroll", handleScroll);
+      if (keyboardOpenTimeout) {
+        window.clearTimeout(keyboardOpenTimeout);
+      }
+    };
   }, []);
   return (
     <input
