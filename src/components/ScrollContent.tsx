@@ -10,6 +10,8 @@ const MyInput = () => {
     let initialHeight = visualViewport.height;
     let keyboardOpenTimeout: number | null = null;
     let isKeyboardOpen = false;
+    let lastScrollOffset = 0;
+    const SCROLL_TOLERANCE = 30; // px
 
     const handleResize = () => {
       if (visualViewport.height < initialHeight) {
@@ -19,6 +21,8 @@ const MyInput = () => {
 
         keyboardOpenTimeout = window.setTimeout(() => {
           isKeyboardOpen = true;
+          // Reset scroll offset when keyboard is opened
+          lastScrollOffset = visualViewport.offsetTop;
         }, 500);
       } else {
         isKeyboardOpen = false;
@@ -30,7 +34,12 @@ const MyInput = () => {
     };
 
     const handleScroll = () => {
-      if (isKeyboardOpen) {
+      if (!isKeyboardOpen) return;
+
+      const currentOffset = visualViewport.offsetTop;
+      const scrollDifference = Math.abs(currentOffset - lastScrollOffset);
+
+      if (scrollDifference > SCROLL_TOLERANCE) {
         ref?.current?.blur();
       }
     };
