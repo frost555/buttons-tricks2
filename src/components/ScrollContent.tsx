@@ -30,7 +30,7 @@ const MyInput = () => {
     };
 
     const handleScroll = () => {
-      if (isKeyboardOpen) {
+      if (isKeyboardOpen && document.activeElement === ref.current) {
         ref?.current?.blur();
       }
     };
