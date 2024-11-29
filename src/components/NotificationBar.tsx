@@ -18,6 +18,11 @@ export const NotificationBar = () => {
         <div className="bg-yellow-600 rounded p-2 text-sm">
           <p>Viewport Properties:</p>
           <ul className="grid grid-cols-2 gap-2">
+            <li>window.innerHeight: {window.innerHeight}px</li>
+            <li>
+              documentElement.clientHeight:{" "}
+              {window.document.documentElement.clientHeight}px
+            </li>
             <li>Height: {viewport.height.toFixed(2)}px</li>
             <li>Width: {viewport.width.toFixed(2)}px</li>
             <li>Offset Left: {viewport.offsetLeft.toFixed(2)}px</li>
