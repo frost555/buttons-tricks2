@@ -11,6 +11,16 @@ const App: React.FC = () => {
   const [position, setPosition] = useState<Position | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [watchId, setWatchId] = useState<number | null>(null);
+  const [highAccuracy, setHighAccuracy] = useState<boolean>(() => {
+    // Load from localStorage on initialization
+    const saved = localStorage.getItem("geoHighAccuracy");
+    return saved ? JSON.parse(saved) : true; // Default to true if not saved
+  });
+
+  // Save high accuracy setting to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("geoHighAccuracy", JSON.stringify(highAccuracy));
+  }, [highAccuracy]);
 
   // Clean up the watch when component unmounts
   useEffect(() => {
@@ -40,8 +50,8 @@ const App: React.FC = () => {
         (resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             maximumAge: 5 * 60000, // 5 minutes
-            timeout: 60000, // 5 seconds
-            enableHighAccuracy: false,
+            timeout: 60000, // 60 seconds
+            enableHighAccuracy: false, // initially false for faster response
           });
         }
       );
@@ -69,7 +79,7 @@ const App: React.FC = () => {
         {
           timeout: 60000, // 60 seconds
           maximumAge: 5 * 60000, // 5 minutes
-          enableHighAccuracy: true,
+          enableHighAccuracy: highAccuracy, // use the saved setting
         }
       );
 
@@ -124,7 +134,7 @@ const App: React.FC = () => {
       {
         timeout: 60000, // 60 seconds
         maximumAge: 5 * 60000, // 5 minutes
-        enableHighAccuracy: true,
+        enableHighAccuracy: highAccuracy, // use the saved setting
       }
     );
 
@@ -136,6 +146,10 @@ const App: React.FC = () => {
       navigator.geolocation.clearWatch(watchId);
     }
     window.location.reload();
+  };
+
+  const toggleHighAccuracy = () => {
+    setHighAccuracy(!highAccuracy);
   };
 
   const formatDate = (timestamp: number) => {
@@ -153,6 +167,22 @@ const App: React.FC = () => {
     >
       <h1>Geolocation Tracker</h1>
       <p>Get your current position and track location changes</p>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <input
+            type="checkbox"
+            checked={highAccuracy}
+            onChange={toggleHighAccuracy}
+          />
+          <span>
+            Enable High Accuracy Mode{" "}
+            <span style={{ color: "#666", fontSize: "14px" }}>
+              (more precise, but may use more battery)
+            </span>
+          </span>
+        </label>
+      </div>
 
       <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
         <button
@@ -248,6 +278,10 @@ const App: React.FC = () => {
             <h3 style={{ marginTop: 0 }}>Current Position</h3>
             <p>
               <strong>Timestamp:</strong> {formatDate(position.timestamp)}
+            </p>
+            <p>
+              <strong>Tracking Mode:</strong>{" "}
+              {highAccuracy ? "High Accuracy" : "Standard Accuracy"}
             </p>
             <p>
               <strong>Coordinates:</strong>
