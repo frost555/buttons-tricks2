@@ -112,11 +112,13 @@ const App: React.FC = () => {
 
     const startTime = performance.now();
 
+    let isSet = false;
     // Only start watching for position updates without getting initial position
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         // For the first position update, record the time it took
-        if (!position) {
+        if (!isSet) {
+          isSet = true;
           const endTime = performance.now();
           setGetCurrentTime(endTime - startTime);
         }
