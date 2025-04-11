@@ -89,6 +89,48 @@ const App: React.FC = () => {
     }
   };
 
+  const startWatchOnly = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setGetCurrentTime(null);
+    setPosition(null);
+
+    const startTime = performance.now();
+
+    // Only start watching for position updates without getting initial position
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        // For the first position update, record the time it took
+        if (!position) {
+          const endTime = performance.now();
+          setGetCurrentTime(endTime - startTime);
+        }
+
+        setPosition({
+          coords: pos.coords,
+          timestamp: pos.timestamp,
+        });
+        setLoading(false);
+      },
+      (err) => {
+        setError(`Watch position error: ${err.message}`);
+        setLoading(false);
+      },
+      {
+        timeout: 60000, // 60 seconds
+        maximumAge: 5 * 60000, // 5 minutes
+        enableHighAccuracy: true,
+      }
+    );
+
+    setWatchId(id);
+  };
+
   const refreshPage = () => {
     if (watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
@@ -115,18 +157,36 @@ const App: React.FC = () => {
       <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
         <button
           onClick={startGeolocation}
-          disabled={loading}
+          disabled={loading || watchId !== null}
           style={{
             padding: "10px 20px",
             fontSize: "16px",
-            backgroundColor: loading ? "#cccccc" : "#4CAF50",
+            backgroundColor:
+              loading || watchId !== null ? "#cccccc" : "#4CAF50",
             color: "white",
             border: "none",
             borderRadius: "4px",
-            cursor: loading ? "not-allowed" : "pointer",
+            cursor: loading || watchId !== null ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Getting Location..." : "Start Tracking"}
+          {loading ? "Getting Location..." : "Get & Track Location"}
+        </button>
+
+        <button
+          onClick={startWatchOnly}
+          disabled={loading || watchId !== null}
+          style={{
+            padding: "10px 20px",
+            fontSize: "16px",
+            backgroundColor:
+              loading || watchId !== null ? "#cccccc" : "#FF9800",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: loading || watchId !== null ? "not-allowed" : "pointer",
+          }}
+        >
+          {loading ? "Starting Watch..." : "Track Only (Skip Initial)"}
         </button>
 
         <button
@@ -238,8 +298,10 @@ const App: React.FC = () => {
         )}
 
         {!position && !error && !loading && (
-          <p>Click "Start Tracking" to get your location.</p>
+          <p>Click one of the tracking buttons to get your location.</p>
         )}
+
+        {loading && !position && !error && <p>Waiting for location data...</p>}
       </div>
     </div>
   );
