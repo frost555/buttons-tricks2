@@ -1,316 +1,103 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 
-// Types
-interface BenchmarkResult {
-  method: string;
-  startTime: number;
-  endTime: number;
-  duration: number;
-  coords?: GeolocationCoordinates;
-  error?: GeolocationPositionError | Error;
+interface Position {
+  coords: GeolocationCoordinates;
+  timestamp: number;
 }
 
-interface BenchmarkOptions {
-  timeout?: number;
-  maximumAge?: number;
-  enableHighAccuracy?: boolean;
-  watchDuration?: number;
-}
-
-// Benchmark functions
-const benchmarkGetCurrentPosition = async (
-  options: BenchmarkOptions = {}
-): Promise<BenchmarkResult> => {
-  const result: BenchmarkResult = {
-    method: "getCurrentPosition",
-    startTime: performance.now(),
-    endTime: 0,
-    duration: 0,
-  };
-
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        result.endTime = performance.now();
-        result.duration = result.endTime - result.startTime;
-        result.coords = position.coords;
-        resolve(result);
-      },
-      (error) => {
-        result.endTime = performance.now();
-        result.duration = result.endTime - result.startTime;
-        result.error = error;
-        resolve(result);
-      },
-      {
-        enableHighAccuracy: options.enableHighAccuracy,
-        timeout: options.timeout,
-        maximumAge: options.maximumAge,
-      }
-    );
-  });
-};
-
-const benchmarkWatchPosition = async (
-  opts: BenchmarkOptions = {}
-): Promise<BenchmarkResult> => {
-  const result: BenchmarkResult = {
-    method: "watchPosition",
-    startTime: performance.now(),
-    endTime: 0,
-    duration: 0,
-  };
-
-  return new Promise<BenchmarkResult>((resolve) => {
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        result.endTime = performance.now();
-        result.duration = result.endTime - result.startTime;
-        result.coords = position.coords;
-        navigator.geolocation.clearWatch(watchId);
-        resolve(result);
-      },
-      (error) => {
-        result.endTime = performance.now();
-        result.duration = result.endTime - result.startTime;
-        result.error = error;
-
-        navigator.geolocation.clearWatch(watchId);
-        resolve(result);
-      },
-      {
-        enableHighAccuracy: opts.enableHighAccuracy,
-        timeout: opts.timeout,
-        maximumAge: opts.maximumAge,
-      }
-    );
-  });
-};
-
-// Main App Component
 const App: React.FC = () => {
-  const [results, setResults] = useState<BenchmarkResult[]>([]);
-  const [loading, setLoading] = useState<string | null>(null);
-  const [resultText, setResultText] = useState<string>(
-    "No benchmark results yet. Click a button to start."
-  );
+  const [loading, setLoading] = useState(false);
+  const [getCurrentTime, setGetCurrentTime] = useState<number | null>(null);
+  const [position, setPosition] = useState<Position | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [watchId, setWatchId] = useState<number | null>(null);
 
-  // Benchmark options state
-  const [options, setOptions] = useState<BenchmarkOptions>({
-    enableHighAccuracy: false,
-    timeout: 10000,
-    maximumAge: 0,
-  });
+  // Clean up the watch when component unmounts
+  useEffect(() => {
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [watchId]);
 
-  // Options panel visibility state
-  const [showOptions, setShowOptions] = useState(false);
+  const startGeolocation = async () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
+    }
 
-  const handleOptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setOptions({
-      ...options,
-      [name]:
-        type === "checkbox"
-          ? checked
-          : type === "number"
-          ? parseInt(value)
-          : value,
-    });
-  };
+    setLoading(true);
+    setError(null);
+    setPosition(null);
+    setGetCurrentTime(null);
 
-  const formatResults = useCallback(
-    (benchmarkResults: BenchmarkResult[]): string => {
-      let output = "GEOLOCATION BENCHMARK RESULTS\n";
-      output += "============================\n\n";
+    try {
+      // First get the current position
+      const startTime = performance.now();
 
-      output += "Benchmark Settings:\n";
-      output += `- High Accuracy: ${
-        options.enableHighAccuracy ? "Enabled" : "Disabled"
-      }\n`;
-      output += `- Timeout: ${options.timeout}ms\n`;
-      output += `- Maximum Age: ${options.maximumAge}ms\n\n`;
-
-      benchmarkResults.forEach((result) => {
-        output += `Method: ${result.method}\n`;
-        output += `Duration: ${result.duration.toFixed(2)}ms\n`;
-
-        if (result.coords) {
-          output += "Position:\n";
-          output += `  - Latitude: ${result.coords.latitude}\n`;
-          output += `  - Longitude: ${result.coords.longitude}\n`;
-          output += `  - Accuracy: ${result.coords.accuracy} meters\n`;
-
-          if (result.coords.altitude !== null) {
-            output += `  - Altitude: ${result.coords.altitude} meters\n`;
-            output += `  - Altitude Accuracy: ${result.coords.altitudeAccuracy} meters\n`;
-          }
-
-          if (result.coords.heading !== null) {
-            output += `  - Heading: ${result.coords.heading} degrees\n`;
-          }
-
-          if (result.coords.speed !== null) {
-            output += `  - Speed: ${result.coords.speed} m/s\n`;
-          }
+      const getCurrentPromise = new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            maximumAge: 5 * 60000, // 5 minutes
+            timeout: 5000, // 5 seconds
+            enableHighAccuracy: false,
+          });
         }
+      );
 
-        if (result.error) {
-          output += "Error:\n";
-          if ("code" in result.error && "message" in result.error) {
-            const geoError = result.error as GeolocationPositionError;
-            output += `  - Code: ${geoError.code}\n`;
-            output += `  - Message: ${geoError.message}\n`;
-          } else {
-            output += `  - ${result.error.message || "Unknown error"}\n`;
-          }
-        }
+      const currentPosition = await getCurrentPromise;
+      const endTime = performance.now();
 
-        output += "\n";
+      setGetCurrentTime(endTime - startTime);
+      setPosition({
+        coords: currentPosition.coords,
+        timestamp: currentPosition.timestamp,
       });
 
-      // Add a comparison section
-      if (benchmarkResults.length >= 2) {
-        output += "COMPARISON\n";
-        output += "==========\n";
-        const sorted = [...benchmarkResults].sort(
-          (a, b) => a.duration - b.duration
-        );
-        output += `Fastest method: ${
-          sorted[0].method
-        } (${sorted[0].duration.toFixed(2)}ms)\n`;
-        output += `Slowest method: ${
-          sorted[sorted.length - 1].method
-        } (${sorted[sorted.length - 1].duration.toFixed(2)}ms)\n`;
-
-        if (sorted.length >= 2) {
-          const diff = sorted[sorted.length - 1].duration - sorted[0].duration;
-          output += `Difference: ${diff.toFixed(2)}ms\n`;
+      // Then start watching for position updates
+      const id = navigator.geolocation.watchPosition(
+        (pos) => {
+          setPosition({
+            coords: pos.coords,
+            timestamp: pos.timestamp,
+          });
+        },
+        (err) => {
+          setError(`Watch position error: ${err.message}`);
+        },
+        {
+          timeout: 60000, // 60 seconds
+          maximumAge: 5 * 60000, // 5 minutes
+          enableHighAccuracy: true,
         }
+      );
+
+      setWatchId(id);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(`getCurrentPosition error: ${err.message}`);
+      } else if (err instanceof GeolocationPositionError) {
+        setError(
+          `getCurrentPosition error: ${err.message} (code: ${err.code})`
+        );
+      } else {
+        setError("An unknown error occurred");
       }
-
-      return output;
-    },
-    [options]
-  );
-
-  const runGetCurrentPositionBenchmark = async () => {
-    if (!navigator.geolocation) {
-      setResultText("Geolocation API is not supported in your browser");
-      return;
-    }
-
-    setLoading("getCurrentPosition");
-    setResultText("Running getCurrentPosition benchmark...");
-
-    try {
-      // Run getCurrentPosition benchmark
-      const getCurrentPositionResult = await benchmarkGetCurrentPosition(
-        options
-      );
-
-      const updatedResults = [
-        ...results.filter((r) => r.method !== "getCurrentPosition"),
-        getCurrentPositionResult,
-      ];
-      setResults(updatedResults);
-      setResultText(formatResults(updatedResults));
-    } catch (error) {
-      setResultText(
-        `Error running getCurrentPosition benchmark: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
     } finally {
-      setLoading(null);
-    }
-  };
-
-  const runWatchPositionBenchmark = async () => {
-    if (!navigator.geolocation) {
-      setResultText("Geolocation API is not supported in your browser");
-      return;
-    }
-
-    setLoading("watchPosition");
-    setResultText("Running watchPosition benchmark...");
-
-    try {
-      // Run watchPosition benchmark
-      const watchPositionResult = await benchmarkWatchPosition(options);
-
-      const updatedResults = [
-        ...results.filter((r) => r.method !== "watchPosition"),
-        watchPositionResult,
-      ];
-      setResults(updatedResults);
-      setResultText(formatResults(updatedResults));
-    } catch (error) {
-      setResultText(
-        `Error running watchPosition benchmark: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const runAllBenchmarks = async () => {
-    if (!navigator.geolocation) {
-      setResultText("Geolocation API is not supported in your browser");
-      return;
-    }
-
-    setLoading("all");
-    setResultText("Running all benchmarks...");
-
-    try {
-      // Run getCurrentPosition benchmark
-      const getCurrentPositionResult = await benchmarkGetCurrentPosition(
-        options
-      );
-
-      // Run watchPosition benchmark
-      const watchPositionResult = await benchmarkWatchPosition(options);
-
-      const benchmarkResults = [getCurrentPositionResult, watchPositionResult];
-      setResults(benchmarkResults);
-      setResultText(formatResults(benchmarkResults));
-    } catch (error) {
-      setResultText(
-        `Error running benchmarks: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    } finally {
-      setLoading(null);
+      setLoading(false);
     }
   };
 
   const refreshPage = () => {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+    }
     window.location.reload();
   };
 
-  const buttonStyle = (isLoading: boolean) => ({
-    padding: "10px 20px",
-    fontSize: "16px",
-    cursor: isLoading ? "not-allowed" : "pointer",
-    backgroundColor: isLoading ? "#cccccc" : "#4CAF50",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    margin: "0 10px 10px 0",
-  });
-
-  const toggleOptionsStyle = {
-    padding: "10px 20px",
-    fontSize: "16px",
-    backgroundColor: showOptions ? "#f44336" : "#2196F3",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    margin: "0 10px 10px 0",
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString();
   };
 
   return (
@@ -322,123 +109,24 @@ const App: React.FC = () => {
         padding: "20px",
       }}
     >
-      <h1>Geolocation Method Benchmark</h1>
-      <p>Click the buttons below to benchmark different geolocation methods.</p>
+      <h1>Geolocation Tracker</h1>
+      <p>Get your current position and track location changes</p>
 
-      <button
-        onClick={() => setShowOptions(!showOptions)}
-        style={toggleOptionsStyle}
-      >
-        {showOptions ? "Hide Options" : "Show Options"}
-      </button>
-
-      {showOptions && (
-        <div
+      <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+        <button
+          onClick={startGeolocation}
+          disabled={loading}
           style={{
-            backgroundColor: "#f5f5f5",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "20px",
+            padding: "10px 20px",
+            fontSize: "16px",
+            backgroundColor: loading ? "#cccccc" : "#4CAF50",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          <h3 style={{ marginTop: 0 }}>Benchmark Options</h3>
-
-          <div style={{ marginBottom: "10px" }}>
-            <label style={{ display: "flex", alignItems: "center" }}>
-              <input
-                type="checkbox"
-                name="enableHighAccuracy"
-                checked={options.enableHighAccuracy}
-                onChange={handleOptionChange}
-                style={{ marginRight: "8px" }}
-              />
-              Enable High Accuracy
-            </label>
-            <div style={{ fontSize: "0.8em", color: "#666", marginTop: "3px" }}>
-              When enabled, provides a more accurate position, but might be
-              slower and use more battery
-            </div>
-          </div>
-
-          <div style={{ marginBottom: "10px" }}>
-            <label style={{ display: "block", marginBottom: "5px" }}>
-              Timeout (ms):
-            </label>
-            <input
-              type="number"
-              name="timeout"
-              value={options.timeout}
-              onChange={handleOptionChange}
-              style={{
-                width: "100%",
-                padding: "8px",
-                boxSizing: "border-box",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-              }}
-              min="0"
-            />
-            <div style={{ fontSize: "0.8em", color: "#666", marginTop: "3px" }}>
-              Maximum time (in milliseconds) to wait for a position. 0 means no
-              timeout.
-            </div>
-          </div>
-
-          <div style={{ marginBottom: "10px" }}>
-            <label style={{ display: "block", marginBottom: "5px" }}>
-              Maximum Age (ms):
-            </label>
-            <input
-              type="number"
-              name="maximumAge"
-              value={options.maximumAge}
-              onChange={handleOptionChange}
-              style={{
-                width: "100%",
-                padding: "8px",
-                boxSizing: "border-box",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-              }}
-              min="0"
-            />
-            <div style={{ fontSize: "0.8em", color: "#666", marginTop: "3px" }}>
-              Maximum age (in milliseconds) of a cached position. 0 means no
-              cache will be used.
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: "flex", flexWrap: "wrap", marginBottom: "20px" }}>
-        <button
-          onClick={runGetCurrentPositionBenchmark}
-          disabled={loading !== null}
-          style={buttonStyle(loading === "getCurrentPosition")}
-        >
-          {loading === "getCurrentPosition"
-            ? "Running getCurrentPosition..."
-            : "Benchmark getCurrentPosition"}
-        </button>
-
-        <button
-          onClick={runWatchPositionBenchmark}
-          disabled={loading !== null}
-          style={buttonStyle(loading === "watchPosition")}
-        >
-          {loading === "watchPosition"
-            ? "Running watchPosition..."
-            : "Benchmark watchPosition"}
-        </button>
-
-        <button
-          onClick={runAllBenchmarks}
-          disabled={loading !== null}
-          style={buttonStyle(loading === "all")}
-        >
-          {loading === "all"
-            ? "Running All Benchmarks..."
-            : "Run All Benchmarks"}
+          {loading ? "Getting Location..." : "Start Tracking"}
         </button>
 
         <button
@@ -451,7 +139,6 @@ const App: React.FC = () => {
             border: "none",
             borderRadius: "4px",
             cursor: "pointer",
-            margin: "0 10px 10px 0",
           }}
         >
           Refresh Page
@@ -459,18 +146,100 @@ const App: React.FC = () => {
       </div>
 
       <div style={{ marginTop: "20px" }}>
-        <h2>Results</h2>
-        <pre
-          style={{
-            backgroundColor: "#f5f5f5",
-            padding: "15px",
-            borderRadius: "5px",
-            overflowX: "auto",
-            whiteSpace: "pre-wrap",
-          }}
-        >
-          {resultText}
-        </pre>
+        <h2>Location Data</h2>
+
+        {error && (
+          <div
+            style={{
+              backgroundColor: "#ffebee",
+              color: "#c62828",
+              padding: "15px",
+              borderRadius: "5px",
+              marginBottom: "15px",
+            }}
+          >
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+
+        {getCurrentTime !== null && (
+          <div
+            style={{
+              backgroundColor: "#e8f5e9",
+              color: "#2e7d32",
+              padding: "15px",
+              borderRadius: "5px",
+              marginBottom: "15px",
+            }}
+          >
+            <strong>Time to get initial position:</strong>{" "}
+            {getCurrentTime.toFixed(2)} ms
+          </div>
+        )}
+
+        {position && (
+          <div
+            style={{
+              backgroundColor: "#f5f5f5",
+              padding: "15px",
+              borderRadius: "5px",
+            }}
+          >
+            <h3 style={{ marginTop: 0 }}>Current Position</h3>
+            <p>
+              <strong>Timestamp:</strong> {formatDate(position.timestamp)}
+            </p>
+            <p>
+              <strong>Coordinates:</strong>
+            </p>
+            <ul style={{ listStyleType: "none", padding: 0 }}>
+              <li>
+                <strong>Latitude:</strong> {position.coords.latitude}
+              </li>
+              <li>
+                <strong>Longitude:</strong> {position.coords.longitude}
+              </li>
+              <li>
+                <strong>Accuracy:</strong> {position.coords.accuracy} meters
+              </li>
+
+              {position.coords.altitude !== null && (
+                <li>
+                  <strong>Altitude:</strong> {position.coords.altitude} meters
+                </li>
+              )}
+
+              {position.coords.altitudeAccuracy !== null && (
+                <li>
+                  <strong>Altitude Accuracy:</strong>{" "}
+                  {position.coords.altitudeAccuracy} meters
+                </li>
+              )}
+
+              {position.coords.heading !== null && (
+                <li>
+                  <strong>Heading:</strong> {position.coords.heading}°
+                </li>
+              )}
+
+              {position.coords.speed !== null && (
+                <li>
+                  <strong>Speed:</strong> {position.coords.speed} m/s
+                </li>
+              )}
+            </ul>
+
+            {watchId !== null && (
+              <p style={{ color: "#4CAF50" }}>
+                <strong>Status:</strong> Actively tracking location changes...
+              </p>
+            )}
+          </div>
+        )}
+
+        {!position && !error && !loading && (
+          <p>Click "Start Tracking" to get your location.</p>
+        )}
       </div>
     </div>
   );
