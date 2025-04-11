@@ -40,7 +40,7 @@ const App: React.FC = () => {
         (resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             maximumAge: 5 * 60000, // 5 minutes
-            timeout: 5000, // 5 seconds
+            timeout: 60000, // 5 seconds
             enableHighAccuracy: false,
           });
         }
